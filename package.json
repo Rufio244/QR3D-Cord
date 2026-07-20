@@ -1,0 +1,4 @@
+"dependencies": {
+  "qrcode": "^1.5.4",
+  "canvas": "^2.11.2"
+}
