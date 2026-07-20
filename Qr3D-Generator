@@ -1,0 +1,9 @@
+git clone https://github.com/Rufio244/QR3D-Cord.git
+```[[__LINK_ICON]](https://githubdocs.cn/en/repositories/creating-and-managing-repositories/cloning-a-repository?f_link_type=f_linkinlinenote&flow_extra=eyJpbmxpbmVfZGlzcGxheV9wb3NpdGlvbiI6MCwiZG9jX3Bvc2l0aW9uIjowLCJkb2NfaWQiOiI5YWUyMWM1YmY3YzZlY2U3LTlkNWFiODcwYjk4NzA4ZDQifQ%3D%3D&platform=windows "[__LINK_ICON]")
+
+---
+
+### 📌 ขั้นตอนหลังจากดาวน์โหลดเสร็จ
+1. เข้าไปที่โฟลเดอร์:
+```bash
+cd QR3D-Cord
