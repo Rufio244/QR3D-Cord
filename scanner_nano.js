@@ -1,20 +1,19 @@
 /**
- * QR3D Cord Nano v2.0 — SCANNER
- * ✅ อ่านทุกข้อมูล: ลิงก์, ข้อความ, รูป, ไฟล์
- * ✅ แก้ล็อกแยกส่วนได้
- * ✅ ทำงานได้ทั้งออนไลน์และออฟไลน์
+ * QR3D Cord Nano v2.1 — SCANNER
+ * ✅ แสดงกล่องรหัสแยกส่วน, เลือกเปิดส่วนใดก็ได้
+ * Copyright: Thanva Phupingbut 244 | Vider AGI
  */
 
 const jsQR = require('jsqr');
 const { createCanvas, loadImage } = require('canvas');
 const crypto = require('crypto');
+const readline = require('readline');
 
 class QR3DCordScanner {
   constructor() {
-    this.version = "2.0.0_NANO";
+    this.version = "2.1.0_MULTI_SECTION";
   }
 
-  // 🔍 อ่านไฟล์ภาพ
   async scanImage(filePath) {
     const image = await loadImage(filePath);
     const canvas = createCanvas(image.width, image.height);
@@ -22,68 +21,58 @@ class QR3DCordScanner {
     ctx.drawImage(image, 0, 0);
 
     const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height), canvas.width, canvas.height);
-    if (!code) throw new Error("ไม่พบข้อมูล QR3D Cord");
+    if (!code) throw new Error("ไม่พบข้อมูล");
 
-    // ถอดรหัส + แยกชั้นนาโน
-    const decoded = this._decodeNanoData(code.data);
-    return this._parseData(decoded);
-  }
+    const data = JSON.parse(Buffer.from(code.data, 'base64url').toString('utf8'));
+    console.log("\n📦 พบข้อมูลทั้งหมด:", data.parts.length, "ส่วน");
+    console.log("🎨 การตั้งค่า:", data.ui);
 
-  // 🧩 ถอดข้อมูลจากชั้น 3D
-  _decodeNanoData(raw) {
-    return Buffer.from(raw, 'base64url').toString('utf8');
-  }
-
-  // 📋 แยกและแสดงผล
-  _parseData(jsonStr) {
-    const data = JSON.parse(jsonStr);
-    const result = { meta: data.meta, accessible: [], locked: [] };
-
-    data.parts.forEach(part => {
-      const info = {
-        id: part.id,
-        type: part.type,
-        content: part.content,
-        locked: part.locked
-      };
-
-      if (part.locked) result.locked.push(info);
-      else {
-        info.content = Buffer.from(part.content, 'base64').toString('utf8');
-        result.accessible.push(info);
-      }
+    // 📋 แสดงรายการส่วนให้เลือก
+    data.parts.forEach((part, i) => {
+      console.log(`\n${i+1}. ${part.name} [${part.type}] ${part.locked ? '🔒 ล็อก' : '✅ เปิด'}`);
+      console.log(`   คำสั่ง: ${part.command || "-"}`);
     });
-    return result;
+
+    // 🔐 ถ้ามีส่วนที่ล็อก ให้แสดงกล่องรหัส
+    const lockedParts = data.parts.filter(p => p.locked);
+    if (lockedParts.length > 0) {
+      console.log(`\n${data.ui.boxTitle}`);
+      await this._showPasswordBox(data, data.ui);
+    }
+
+    return data;
   }
 
-  // 🔐 ปลดล็อกส่วนที่ซ่อน
-  unlockPart(scannedData, partId, password) {
-    const part = scannedData.locked.find(p => p.id === partId);
-    if (!part) return { ok: false, msg: "ไม่พบส่วนนี้" };
+  // 🧠 กล่องรหัสผ่านแบบโต้ตอบ
+  async _showPasswordBox(fullData, uiConfig) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-    const hash = crypto.createHash('sha256').update(password).digest('hex');
-    if (hash !== part.passHash) return { ok: false, msg: "รหัสผิด" };
+    for (const part of fullData.parts.filter(p => p.locked)) {
+      let unlocked = false;
+      while (!unlocked) {
+        const pass = await new Promise(res => rl.question(`👉 สำหรับ "${part.name}" → ป้อนรหัส: `, res));
+        const hash = crypto.createHash('sha256').update(pass).digest('hex');
 
-    const content = Buffer.from(part.content, 'base64').toString('utf8');
-    return { ok: true, type: part.type, content };
+        if (hash === part.passHash) {
+          part.content = Buffer.from(part.content, 'base64').toString('utf8');
+          part.locked = false;
+          console.log(`✅ ปลดล็อก "${part.name}" สำเร็จ!`);
+          console.log(`📄 เนื้อหา: ${part.content.substring(0, 100)}...`);
+          unlocked = true;
+        } else {
+          console.log(uiConfig.wrongPassMsg);
+        }
+      }
+    }
+    rl.close();
   }
 }
 
-// 📌 ตัวอย่างการใช้งาน
+// 📌 ทดสอบการทำงาน
 if (require.main === module) {
-  const scanner = new QR3DCordScanner();
-
-  scanner.scanImage('qr3d_nano_demo.png')
-    .then(data => {
-      console.log("✅ ข้อมูลที่อ่านได้:");
-      console.log("📂 ส่วนเปิด:", data.accessible);
-      console.log("🔒 ส่วนล็อก:", data.locked.map(p => p.id));
-
-      // ถ้าต้องการปลดล็อก
-      const unlocked = scanner.unlockPart(data, 'P2', 'secret123');
-      console.log("🔓 ผลปลดล็อก:", unlocked);
-    })
-    .catch(err => console.error("❌ อ่านไม่ได้:", err));
+  new QR3DCordScanner().scanImage('multi_section_qr.png')
+    .then(() => console.log("\n✅ อ่านข้อมูลครบถ้วน"))
+    .catch(err => console.error("❌", err));
 }
 
 module.exports = QR3DCordScanner;
