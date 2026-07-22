@@ -2,3 +2,14 @@
   "qrcode": "^1.5.4",
   "canvas": "^2.11.2"
 }
+{
+  "name": "qr3d-cord",
+  "version": "2.0.0",
+  "description": "QR3D Cord Nano — High Capacity Nano 3D QR Code System",
+  "main": "generator_nano.js",
+  "dependencies": {
+    "qrcode": "^1.5.3",
+    "jsqr": "^1.4.0",
+    "canvas": "^2.11.2"
+  }
+}
